@@ -1,0 +1,77 @@
+name: Publish George and Friends
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+      - name: Prepare public website
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          source = Path('web') if Path('web/index.html').is_file() else Path('.')
+          if not (source / 'index.html').is_file():
+              raise SystemExit('index.html is missing from the website.')
+          output = Path('_site')
+          if output.exists():
+              shutil.rmtree(output)
+          output.mkdir()
+          public_names = {'CNAME', 'robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'favicon.ico', 'favicon.svg', 'site-config.js', 'service-worker.js'}
+          for item in source.iterdir():
+              if item.is_file() and (item.suffix.lower() == '.html' or item.name in public_names):
+                  if item.is_symlink():
+                      raise SystemExit('Website files must not be symbolic links.')
+                  shutil.copy2(item, output / item.name)
+          allowed = {'.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.ico', '.mp4', '.webm', '.woff', '.woff2', '.ttf', '.otf'}
+          folders = [(source / 'assets', output / 'assets'), (source / 'media', output / 'media')]
+          # Retain the existing Supabase upload setting web/media for a root-level website.
+          if source == Path('.'):
+              folders.append((Path('web/media'), output / 'media'))
+          for folder, target in folders:
+              if not folder.exists():
+                  continue
+              if folder.is_symlink():
+                  raise SystemExit('Website folders must not be symbolic links.')
+              for item in folder.rglob('*'):
+                  if item.is_symlink():
+                      raise SystemExit('Website assets must not be symbolic links.')
+                  if not item.is_file():
+                      continue
+                  if any(part.startswith('.') for part in item.relative_to(folder).parts) or item.suffix.lower() not in allowed:
+                      raise SystemExit('Unexpected file in public assets: ' + str(item))
+                  destination = target / item.relative_to(folder)
+                  destination.parent.mkdir(parents=True, exist_ok=True)
+                  if destination.exists() and destination.read_bytes() != item.read_bytes():
+                      raise SystemExit('Conflicting public media file: ' + str(destination))
+                  shutil.copy2(item, destination)
+          (output / '.nojekyll').touch()
+          print('Prepared', sum(p.is_file() for p in output.rglob('*')), 'public files.')
+          PY
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4
