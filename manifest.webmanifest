@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "George and Friends",
+  "short_name": "George and Friends",
+  "description": "Pony parties, animal assisted visits and special occasions with George and Friends.",
+  "lang": "en-GB",
+  "start_url": "./index.html#/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8deed",
+  "theme_color": "#633575",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src": "./assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./assets/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
