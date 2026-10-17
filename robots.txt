@@ -1,3 +1,4 @@
 User-agent: *
 Disallow: /admin
 Disallow: /booking-workspace.html
+Sitemap: https://gandf.georgetech.online/sitemap.xml
